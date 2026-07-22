@@ -1,0 +1,23 @@
+# Line endings are pinned here rather than left to each contributor's core.autocrlf, because the
+# Plugin Hub builds this on Linux and two files are sensitive to it.
+
+# Normalise everything text-like to LF inside the repository. Working copies on Windows still get
+# native endings on checkout.
+* text=auto
+
+# gradlew is a shell script with a #!/bin/sh line. Checked out with CRLF on Linux it fails as
+# "/bin/sh^M: bad interpreter", so it must stay LF everywhere, including on Windows.
+gradlew text eol=lf
+
+# ...and the Windows launcher is the mirror image: cmd.exe needs CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Java, Gradle and docs: LF in the repo, which is what every other RuneLite plugin ships.
+*.java   text eol=lf
+*.gradle text eol=lf
+*.md     text eol=lf
+*.properties text eol=lf
+
+# Never touch the wrapper jar.
+*.jar binary

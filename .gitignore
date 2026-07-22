@@ -1,0 +1,14 @@
+.gradle/
+build/
+.idea/
+*.iml
+
+# Never commit a built jar. The Plugin Hub builds from source; a checked-in fat jar (this one
+# bundles the whole RuneLite client, ~31 MB) is both useless to reviewers and impossible for them
+# to verify against the source next to it.
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local development helpers: a double-click build/launch flow and the Jagex-credentials ACL
+# scripts. Machine-specific and irrelevant to the Hub, so they stay out of the public repo.
+local-dev/

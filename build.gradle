@@ -1,0 +1,96 @@
+/*
+ * Waypoint Sync. Follows the runelite/example-plugin build, including its shadowJar task.
+ *
+ * Run the client with the plugin loaded:   gradlew runClient
+ * Build a standalone launcher:             gradlew shadowJar   -> build/libs/waypoint-sync.jar
+ *
+ * Build with JDK 21 (LTS). Gradle 8.10 runs on Java 8-23 and Lombok 1.18.30 tops out at 21.
+ */
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenLocal()
+    maven {
+        url = 'https://repo.runelite.net'
+        content {
+            includeGroupByRegex("net\\.runelite.*")
+        }
+    }
+    mavenCentral()
+}
+
+// 'latest.release' tracks the current RuneLite client. Pin a version here
+// (e.g. '1.10.31.1') if you want reproducible builds.
+def runeLiteVersion = 'latest.release'
+def launcherClass = 'com.waypointrs.sync.WaypointSyncPluginTest'
+
+dependencies {
+    compileOnly group: 'net.runelite', name: 'client', version: runeLiteVersion
+
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
+    testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion
+}
+
+group = 'com.waypointrs'
+version = '1.0.0'
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    // Emit Java 11 bytecode regardless of which JDK does the compiling. This is what lets a
+    // modern JDK build a plugin the RuneLite client can load; it is NOT a claim that you must
+    // install JDK 11.
+    options.release.set(11)
+}
+
+// Launch RuneLite with this plugin loaded (dev/personal use).
+tasks.register('runClient', JavaExec) {
+    group = 'application'
+    description = 'Runs RuneLite with the Waypoint Sync plugin loaded'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = launcherClass
+
+    jvmArgs "-ea"
+    args "--developer-mode", "--debug"
+}
+
+// Bundle RuneLite + the plugin into one runnable jar, so launching needs no Gradle:
+//   gradlew shadowJar  ->  build/libs/waypoint-sync.jar  ->  java -jar waypoint-sync.jar
+//
+// This is upstream example-plugin's own recipe: a plain Jar task, no third-party shadow
+// plugin. The client lives on the *test* configuration (example-plugin convention), which is
+// why both source sets and testRuntimeClasspath are folded in.
+tasks.register('shadowJar', Jar) {
+    group = 'application'
+    description = 'Builds a self-contained waypoint-sync.jar that launches RuneLite with Waypoint Sync'
+    dependsOn configurations.testRuntimeClasspath
+
+    manifest {
+        attributes('Main-Class': launcherClass, 'Multi-Release': true)
+    }
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from sourceSets.main.output
+    from sourceSets.test.output
+    from {
+        configurations.testRuntimeClasspath.collect { file ->
+            file.isDirectory() ? file : zipTree(file)
+        }
+    }
+
+    // Signatures no longer match a merged archive, and a stale INDEX.LIST/module-info
+    // misdescribes it.
+    exclude 'META-INF/INDEX.LIST'
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+    exclude '**/module-info.class'
+
+    archiveFileName.set('waypoint-sync.jar')
+}
+
